@@ -123,21 +123,6 @@ function findTier(
   return null;
 }
 
-/** The first occurrence at or after `from`, at the first tier with one. */
-function findFrom(
-  fileLines: string[],
-  o: string[],
-  from: number,
-  strict: boolean,
-): { tier: number; pos: number } | null {
-  const top = strict ? 1 : 3;
-  for (let tier = 0; tier < top; tier++) {
-    const occ = occurrences(fileLines, o, tier).filter((i) => i >= from);
-    if (occ.length > 0) return { tier, pos: occ[0]! };
-  }
-  return null;
-}
-
 function leadingWs(line: string): string {
   const m = /^[ \t]*/.exec(line);
   return m ? m[0] : '';
@@ -237,7 +222,11 @@ function hunkN(h: Hunk): NItem[] {
 function parseUnifiedPath(line: string): string {
   const rest = line.slice(4);
   const cut = rest.indexOf('\t');
-  return (cut < 0 ? rest : rest.slice(0, cut)).trim();
+  const p = (cut < 0 ? rest : rest.slice(0, cut)).trim();
+  if (p === '/dev/null') return p;
+  if (p.startsWith('a/')) return p.slice(2);
+  if (p.startsWith('b/')) return p.slice(2);
+  return p;
 }
 
 function parseDiffGit(line: string, num: number): { a: string; b: string } {
@@ -649,7 +638,7 @@ function parseV4a(lines: string[], strict: boolean): Edit[] {
       raw.push(bl);
       i++;
     }
-    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+    while (raw.length > 0 && blank(raw[raw.length - 1]!)) raw.pop();
     if (kind === 'add') {
       const fileLines: string[] = [];
       for (let k = 0; k < raw.length; k++) {
